@@ -1,0 +1,5 @@
+github_owner       = "your-name"
+github_repo        = "ecs-bluegreen"
+github_owner_id    = "12345678"
+github_repo_id     = "987654321"
+test_listener_cidr = "203.0.113.10/32"
