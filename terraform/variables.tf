@@ -37,3 +37,14 @@ variable "bake_time_in_minutes" {
   type    = number
   default = 3
 }
+
+variable "enable_deletion_protection" {
+  type        = bool
+  default     = true
+  description = "ALB の削除保護。destroy 前に false で apply する"
+}
+
+variable "container_port" {
+  type    = number
+  default = 8080
+}

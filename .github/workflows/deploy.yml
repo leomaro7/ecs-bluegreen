@@ -21,20 +21,21 @@ env:
   ECS_SERVICE: ecs-bluegreen
   TASK_FAMILY: ecs-bluegreen
   CONTAINER_NAME: app
+  DESIRED_COUNT: 2
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: aws-actions/configure-aws-credentials@v6
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - id: ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
 
       - id: build
         env:
@@ -50,17 +51,25 @@ jobs:
             --query taskDefinition > task-definition.json
 
       - id: render
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        uses: aws-actions/amazon-ecs-render-task-definition@8d79160660ad39c402a16e5fc7cd2a32e8f7d6b7 # v1.9.1
         with:
           task-definition: task-definition.json
           container-name: ${{ env.CONTAINER_NAME }}
           image: ${{ steps.build.outputs.image }}
 
+      # Terraform は desired_count = 0 でサービスを作るので、初回だけタスク数を指定する
+      - id: count
+        run: |
+          current=$(aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
+            --query 'services[0].desiredCount' --output text)
+          if [ "$current" = "0" ]; then echo "desired=$DESIRED_COUNT" >> "$GITHUB_OUTPUT"; fi
+
       # UpdateService を呼ぶだけで、サービス側の BLUE_GREEN 設定に従って切り替わる
-      - uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+      - uses: aws-actions/amazon-ecs-deploy-task-definition@a00d4d57ac0de1a99b39fe469f3d898d38717c2b # v2.6.4
         with:
           task-definition: ${{ steps.render.outputs.task-definition }}
           cluster: ${{ env.ECS_CLUSTER }}
           service: ${{ env.ECS_SERVICE }}
+          desired-count: ${{ steps.count.outputs.desired }}
           wait-for-service-stability: true
           wait-for-minutes: 20

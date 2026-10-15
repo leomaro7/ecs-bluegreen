@@ -19,6 +19,24 @@ resource "aws_iam_role_policy_attachment" "task_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+# ---- タスクロール（アプリは AWS API を呼ばないので権限なし） ----
+resource "aws_iam_role" "task" {
+  name = "${var.name}-task"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "ecs-tasks.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+      Condition = {
+        StringEquals = { "aws:SourceAccount" = data.aws_caller_identity.current.account_id }
+        ArnLike      = { "aws:SourceArn" = "arn:aws:ecs:${var.region}:${data.aws_caller_identity.current.account_id}:*" }
+      }
+    }]
+  })
+}
+
 # ---- Blue/Green で ECS が ELB を操作するためのインフラストラクチャロール ----
 resource "aws_iam_role" "ecs_infra_lb" {
   name = "${var.name}-ecs-infra-lb"
@@ -111,7 +129,7 @@ resource "aws_iam_role_policy" "github_actions" {
       {
         Effect   = "Allow"
         Action   = "iam:PassRole"
-        Resource = aws_iam_role.task_execution.arn
+        Resource = [aws_iam_role.task_execution.arn, aws_iam_role.task.arn]
         Condition = {
           StringEquals = { "iam:PassedToService" = "ecs-tasks.amazonaws.com" }
         }

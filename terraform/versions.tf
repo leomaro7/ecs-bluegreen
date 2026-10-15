@@ -7,6 +7,14 @@ terraform {
       version = "~> 6.69"
     }
   }
+
+  # bucket は terraform init -backend-config="bucket=..." で渡す
+  backend "s3" {
+    key          = "ecs-bluegreen/terraform.tfstate"
+    region       = "ap-northeast-1"
+    encrypt      = true
+    use_lockfile = true
+  }
 }
 
 provider "aws" {
