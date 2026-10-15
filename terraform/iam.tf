@@ -74,7 +74,7 @@ resource "aws_iam_role" "github_actions" {
       Condition = {
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-          # 旧形式と、2026-07-15 以降に作成されたリポジトリの ID 付き形式の両方を許可
+          # 旧形式と、2026-07-15 より後に作成（または名前変更・移管）されたリポジトリの ID 付き形式の両方を許可
           "token.actions.githubusercontent.com:sub" = [
             "repo:${var.github_owner}/${var.github_repo}:ref:refs/heads/main",
             "repo:${var.github_owner}@${var.github_owner_id}/${var.github_repo}@${var.github_repo_id}:ref:refs/heads/main",
