@@ -14,4 +14,5 @@ ECS Fargate のネイティブ Blue/Green デプロイ（`deploymentConfiguratio
 cd terraform
 terraform apply -var enable_deletion_protection=false
 terraform destroy -var enable_deletion_protection=false
+aws logs delete-log-group --log-group-name /aws/ecs/containerinsights/ecs-bluegreen/performance
 ```
