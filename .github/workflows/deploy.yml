@@ -57,12 +57,14 @@ jobs:
           container-name: ${{ env.CONTAINER_NAME }}
           image: ${{ steps.build.outputs.image }}
 
-      # Terraform は desired_count = 0 でサービスを作るので、初回だけタスク数を指定する
+      # Terraform は desired_count = 0 でサービスを作る。
+      # 新しいタスク定義と台数を同時に渡すと、Blue/Green 中は旧リビジョン（起動できない初回の枠）も
+      # 同じ台数で起動しようとして失敗を繰り返すので、初回は「0 台のまま切り替え → 台数を上げる」の 2 段階にする
       - id: count
         run: |
           current=$(aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
             --query 'services[0].desiredCount' --output text)
-          if [ "$current" = "0" ]; then echo "desired=$DESIRED_COUNT" >> "$GITHUB_OUTPUT"; fi
+          if [ "$current" = "0" ]; then echo "initial=true" >> "$GITHUB_OUTPUT"; fi
 
       # UpdateService を呼ぶだけで、サービス側の BLUE_GREEN 設定に従って切り替わる
       - uses: aws-actions/amazon-ecs-deploy-task-definition@a00d4d57ac0de1a99b39fe469f3d898d38717c2b # v2.6.4
@@ -70,6 +72,12 @@ jobs:
           task-definition: ${{ steps.render.outputs.task-definition }}
           cluster: ${{ env.ECS_CLUSTER }}
           service: ${{ env.ECS_SERVICE }}
-          desired-count: ${{ steps.count.outputs.desired }}
           wait-for-service-stability: true
           wait-for-minutes: 20
+
+      - name: Scale out (first deploy only)
+        if: steps.count.outputs.initial == 'true'
+        run: |
+          aws ecs update-service --cluster "$ECS_CLUSTER" --service "$ECS_SERVICE" \
+            --desired-count "$DESIRED_COUNT" --query 'service.desiredCount' --output text
+          aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE"
