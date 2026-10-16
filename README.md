@@ -14,5 +14,6 @@ ECS Fargate のネイティブ Blue/Green デプロイ（`deploymentConfiguratio
 cd terraform
 terraform apply -var enable_deletion_protection=false
 terraform destroy -var enable_deletion_protection=false
+for td in $(aws ecs list-task-definitions --family-prefix ecs-bluegreen --query 'taskDefinitionArns[]' --output text); do aws ecs deregister-task-definition --task-definition $td --query 'taskDefinition.revision' --output text; done
 aws logs delete-log-group --log-group-name /aws/ecs/containerinsights/ecs-bluegreen/performance
 ```
